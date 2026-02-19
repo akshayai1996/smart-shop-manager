@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% block title %}Khatabook - Credit Ledger | ShopEase{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 style="margin:0;color:#2d3748;"><i class="fas fa-book" style="color:#667eea;"></i> Khatabook (Credit Ledger)</h1>
+        <p style="color:#718096;margin-top:5px;">Manage customer credit (Udhaar) and payments</p>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="metrics-row">
+    <div class="metric-card">
+        <div class="metric-icon" style="background:#ebf4ff;color:#667eea;">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="metric-content">
+            <span class="metric-label">Total Customers</span>
+            <span class="metric-value">{{ total_customers }}</span>
+        </div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-icon" style="background:#fff5f5;color:#e53e3e;">
+            <i class="fas fa-rupee-sign"></i>
+        </div>
+        <div class="metric-content">
+            <span class="metric-label">Total Outstanding</span>
+            <span class="metric-value" style="color:#e53e3e;">₹{{ "{:,.2f}".format(total_credit) }}</span>
+        </div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-icon" style="background:#fffaf0;color:#dd6b20;">
+            <i class="fas fa-user-clock"></i>
+        </div>
+        <div class="metric-content">
+            <span class="metric-label">Active Debtors</span>
+            <span class="metric-value" style="color:#dd6b20;">{{ total_debtors }}</span>
+        </div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-icon" style="background:#f0fff4;color:#38a169;">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="metric-content">
+            <span class="metric-label">Clear Balance</span>
+            <span class="metric-value" style="color:#38a169;">{{ total_customers - total_debtors }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Action Buttons Row -->
+<div style="display:flex;gap:15px;margin-bottom:25px;flex-wrap:wrap;">
+    <button onclick="document.getElementById('addCustomerModal').style.display='flex'" 
+            style="padding:12px 24px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;transition:all 0.2s;">
+        <i class="fas fa-user-plus"></i> Add Customer
+    </button>
+    <button onclick="document.getElementById('addEntryModal').style.display='flex'"
+            style="padding:12px 24px;background:#e53e3e;color:white;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;transition:all 0.2s;">
+        <i class="fas fa-plus-circle"></i> Record Udhaar
+    </button>
+</div>
+
+<!-- Customer List Table -->
+<div style="background:white;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);overflow:hidden;">
+    <div style="padding:20px 24px;border-bottom:2px solid #edf2f7;">
+        <h2 style="margin:0;font-size:18px;color:#2d3748;"><i class="fas fa-address-book" style="color:#667eea;margin-right:8px;"></i>Customer Khata List</h2>
+    </div>
+    {% if customers %}
+    <table class="styled-table" style="margin:0;">
+        <thead>
+            <tr>
+                <th style="background:#f7fafc;color:#4a5568;font-weight:600;">Customer</th>
+                <th style="background:#f7fafc;color:#4a5568;font-weight:600;">Phone</th>
+                <th style="background:#f7fafc;color:#4a5568;font-weight:600;">Address</th>
+                <th style="background:#f7fafc;color:#4a5568;font-weight:600;text-align:right;">Balance (₹)</th>
+                <th style="background:#f7fafc;color:#4a5568;font-weight:600;">Status</th>
+                <th style="background:#f7fafc;color:#4a5568;font-weight:600;text-align:center;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in customers %}
+            <tr style="transition:background 0.15s;" onmouseover="this.style.background='#f7fafc'" onmouseout="this.style.background='white'">
+                <td style="font-weight:600;color:#2d3748;">
+                    <i class="fas fa-user-circle" style="color:#667eea;margin-right:8px;font-size:18px;"></i>
+                    {{ c.name }}
+                </td>
+                <td style="color:#4a5568;">{{ c.phone }}</td>
+                <td style="color:#718096;font-size:13px;">{{ c.address or '—' }}</td>
+                <td style="text-align:right;font-weight:700;font-size:16px;
+                    {% if c.balance and c.balance|float > 0 %}color:#e53e3e;{% elif c.balance and c.balance|float < 0 %}color:#38a169;{% else %}color:#718096;{% endif %}">
+                    ₹{{ "{:,.2f}".format(c.balance|float) }}
+                </td>
+                <td>
+                    {% if c.balance and c.balance|float > 0 %}
+                        <span style="background:#fed7d7;color:#c53030;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">Pending</span>
+                    {% elif c.balance and c.balance|float < 0 %}
+                        <span style="background:#c6f6d5;color:#276749;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">Overpaid</span>
+                    {% else %}
+                        <span style="background:#e2e8f0;color:#4a5568;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">Clear</span>
+                    {% endif %}
+                </td>
+                <td style="text-align:center;">
+                    <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+                        <a href="{{ url_for('khatabook.ledger', customer_id=c.id) }}" 
+                           style="padding:6px 14px;background:#667eea;color:white;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;">
+                            <i class="fas fa-book-open"></i> Khata
+                        </a>
+                        {% if c.balance and c.balance|float > 0 %}
+                        <div style="position:relative;display:inline-block;" class="collect-dropdown-container">
+                            <button onclick="toggleCollectDropdown(this)" 
+                                    style="padding:6px 14px;background:#38a169;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">
+                                <i class="fas fa-hand-holding-usd"></i> Collect <i class="fas fa-caret-down"></i>
+                            </button>
+                            <div class="collect-dropdown" style="display:none;position:absolute;top:100%;right:0;margin-top:4px;background:white;border-radius:8px;box-shadow:0 6px 25px rgba(0,0,0,0.15);width:180px;z-index:100;overflow:hidden;">
+                                <a href="{{ url_for('payment.khata_payment', customer_id=c.id, mode='upi', amount=c.balance|float) }}" 
+                                   style="display:block;padding:10px 15px;text-decoration:none;color:#2d3748;font-size:13px;border-bottom:1px solid #edf2f7;"
+                                   onmouseover="this.style.background='#f7fafc'" onmouseout="this.style.background='white'">
+                                    <i class="fas fa-qrcode" style="color:#667eea;width:18px;"></i> UPI / QR
+                                </a>
+                                <a href="{{ url_for('payment.khata_payment', customer_id=c.id, mode='card', amount=c.balance|float) }}" 
+                                   style="display:block;padding:10px 15px;text-decoration:none;color:#2d3748;font-size:13px;border-bottom:1px solid #edf2f7;"
+                                   onmouseover="this.style.background='#f7fafc'" onmouseout="this.style.background='white'">
+                                    <i class="far fa-credit-card" style="color:#3399cc;width:18px;"></i> Card
+                                </a>
+                                <a href="{{ url_for('payment.khata_payment', customer_id=c.id, mode='cash', amount=c.balance|float) }}" 
+                                   style="display:block;padding:10px 15px;text-decoration:none;color:#2d3748;font-size:13px;"
+                                   onmouseover="this.style.background='#f7fafc'" onmouseout="this.style.background='white'">
+                                    <i class="fas fa-money-bill-wave" style="color:#38a169;width:18px;"></i> Cash
+                                </a>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="no-data" style="padding:60px 20px;">
+        <i class="fas fa-book" style="font-size:48px;color:#cbd5e0;margin-bottom:15px;display:block;"></i>
+        <p style="font-size:18px;color:#4a5568;margin-bottom:8px;">No customers added yet</p>
+        <p style="color:#718096;">Click "Add Customer" to start your Khatabook</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Recent Activity -->
+{% if recent_entries %}
+<div style="background:white;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-top:25px;overflow:hidden;">
+    <div style="padding:20px 24px;border-bottom:2px solid #edf2f7;">
+        <h2 style="margin:0;font-size:18px;color:#2d3748;"><i class="fas fa-history" style="color:#667eea;margin-right:8px;"></i>Recent Activity</h2>
+    </div>
+    <div style="padding:15px 24px;">
+        {% for entry, customer_name in recent_entries %}
+        <div style="display:flex;align-items:center;gap:15px;padding:12px 0;border-bottom:1px solid #edf2f7;">
+            {% if entry.entry_type == 'credit' %}
+                <div style="width:40px;height:40px;background:#fed7d7;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-arrow-up" style="color:#e53e3e;"></i>
+                </div>
+            {% else %}
+                <div style="width:40px;height:40px;background:#c6f6d5;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-arrow-down" style="color:#38a169;"></i>
+                </div>
+            {% endif %}
+            <div style="flex:1;">
+                <div style="font-weight:600;color:#2d3748;">{{ customer_name }}</div>
+                <div style="font-size:13px;color:#718096;">{{ entry.description or ('Credit given' if entry.entry_type == 'credit' else 'Payment received') }} · {{ entry.date.strftime('%d %b %Y, %I:%M %p') }}</div>
+            </div>
+            <div style="font-weight:700;font-size:16px;{% if entry.entry_type == 'credit' %}color:#e53e3e;{% else %}color:#38a169;{% endif %}">
+                {{ '+' if entry.entry_type == 'credit' else '-' }}₹{{ "{:,.2f}".format(entry.amount|float) }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- ========== ADD CUSTOMER MODAL ========== -->
+<div id="addCustomerModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:16px;padding:35px;width:90%;max-width:450px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;">
+            <h2 style="margin:0;color:#2d3748;font-size:22px;"><i class="fas fa-user-plus" style="color:#667eea;"></i> Add Customer</h2>
+            <button onclick="document.getElementById('addCustomerModal').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:22px;color:#a0aec0;">✕</button>
+        </div>
+        <form method="POST" action="{{ url_for('khatabook.add_customer') }}">
+            <div class="form-group">
+                <label style="font-weight:600;color:#4a5568;">Customer Name *</label>
+                <input type="text" name="name" required placeholder="e.g. Ramesh Kumar" style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;">
+            </div>
+            <div class="form-group">
+                <label style="font-weight:600;color:#4a5568;">Phone Number *</label>
+                <input type="tel" name="phone" required pattern="[0-9]{10}" placeholder="10-digit number" style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;">
+            </div>
+            <div class="form-group">
+                <label style="font-weight:600;color:#4a5568;">Address</label>
+                <input type="text" name="address" placeholder="e.g. Near Railway Station" style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;">
+            </div>
+            <button type="submit" style="width:100%;padding:14px;background:#667eea;color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.2s;">
+                <i class="fas fa-check"></i> Add Customer
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ========== ADD CREDIT (UDHAAR) MODAL ========== -->
+<div id="addEntryModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:16px;padding:35px;width:90%;max-width:450px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;">
+            <h2 style="margin:0;color:#e53e3e;font-size:22px;"><i class="fas fa-plus-circle"></i> Record Udhaar</h2>
+            <button onclick="document.getElementById('addEntryModal').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:22px;color:#a0aec0;">✕</button>
+        </div>
+        <form method="POST" action="{{ url_for('khatabook.add_entry') }}">
+            <input type="hidden" name="entry_type" value="credit">
+            <div class="form-group">
+                <label style="font-weight:600;color:#4a5568;">Select Customer *</label>
+                <select name="customer_id" required style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;">
+                    <option value="">-- Choose Customer --</option>
+                    {% for c in customers %}
+                    <option value="{{ c.id }}">{{ c.name }} ({{ c.phone }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="font-weight:600;color:#4a5568;">Credit Amount (₹) *</label>
+                <input type="number" name="amount" required step="0.01" min="0.01" placeholder="e.g. 500" style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;">
+            </div>
+            <div class="form-group">
+                <label style="font-weight:600;color:#4a5568;">Description</label>
+                <input type="text" name="description" placeholder="e.g. 2kg Rice, 1L Oil" style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;">
+            </div>
+            <button type="submit" style="width:100%;padding:14px;background:#e53e3e;color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;">
+                <i class="fas fa-arrow-up"></i> Record Credit (Udhaar)
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function toggleCollectDropdown(btn) {
+        // Close all other dropdowns
+        document.querySelectorAll('.collect-dropdown').forEach(d => {
+            if (d !== btn.nextElementSibling) d.style.display = 'none';
+        });
+        const dd = btn.nextElementSibling;
+        dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Close all dropdowns on outside click
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.collect-dropdown-container')) {
+            document.querySelectorAll('.collect-dropdown').forEach(d => d.style.display = 'none');
+        }
+    });
+</script>
+
+{% endblock %}

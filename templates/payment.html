@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Payment - ShopEase</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3399cc;
+            --bg: #f4f6f8;
+            --text: #0b2135;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text);
+        }
+        
+        .payment-container {
+            display: flex;
+            background: var(--surface);
+            width: 900px;
+            min-height: 600px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        /* Left Section: Order Summary */
+        .order-summary {
+            background: #1a237e;
+            color: white;
+            width: 35%;
+            padding: 40px;
+            box-sizing: border-box;
+            position: relative;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .order-details h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
+            margin-bottom: 20px;
+        }
+        
+        .amount-display { margin-bottom: 30px; }
+        .amount-value { font-size: 32px; font-weight: 700; }
+        .amount-currency { font-size: 16px; font-weight: 500; opacity: 0.8; }
+        
+        .product-info {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 6px;
+        }
+        
+        .product-name { font-weight: 600; margin-bottom: 5px; }
+        .product-meta { font-size: 13px; opacity: 0.8; }
+        
+        /* Right Section: Payment Options */
+        .payment-options {
+            width: 65%;
+            padding: 40px;
+            box-sizing: border-box;
+            background: #fff;
+            overflow-y: auto;
+        }
+        
+        .payment-options h2 {
+            margin-top: 0;
+            margin-bottom: 30px;
+            font-size: 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .tab {
+            padding: 10px 0;
+            cursor: pointer;
+            color: #718096;
+            font-weight: 500;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .tab.active { color: var(--primary); }
+        
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--primary);
+        }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        /* Form Styling */
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 8px; color: #4a5568; }
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .form-input:focus { outline: none; border-color: var(--primary); }
+        
+        .form-row { display: flex; gap: 20px; }
+        
+        .btn-pay {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 14px;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-pay:hover { background: #2879ed; }
+        
+        /* UPI QR Style */
+        .upi-container {
+            text-align: center;
+            padding: 20px;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            margin-bottom: 15px;
+        }
+        
+        /* Modal for OTP */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center; justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            width: 300px;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Khata Section */
+        .khata-info {
+            background: #fffbeb;
+            border: 1px solid #fbbf24;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .khata-info h3 {
+            color: #92400e;
+            margin: 0 0 10px;
+            font-size: 16px;
+        }
+        .khata-info p {
+            color: #78350f;
+            font-size: 13px;
+            margin: 4px 0;
+        }
+        .khata-icon-big {
+            font-size: 48px;
+            color: #f59e0b;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="payment-container">
+    <!-- Order Summary -->
+    <div class="order-summary">
+        <div class="logo">
+            <i class="fas fa-shopping-bag"></i> ShopEase
+        </div>
+        <div class="order-details">
+            <h2>Order Summary</h2>
+            <div class="amount-display">
+                <div class="amount-currency">Total Payable</div>
+                <div class="amount-value">₹ {{ "{:,.2f}".format(amount) }}</div>
+            </div>
+            
+            <div class="product-info">
+                {% if order %}
+                    <div class="product-name">Customer: {{ order.customer_name }}</div>
+                    <div class="product-meta">Phone: {{ order.customer_phone }}</div>
+                    <hr style="border-color: rgba(255,255,255,0.2); margin: 10px 0;">
+                    <div style="max-height: 150px; overflow-y: auto;">
+                        {% for item in order['items'] %}
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px;">
+                            <span>{{ item.qty }} x {{ item.name }}</span>
+                            <span>₹{{ item.total }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="product-name">{{ product.name }}</div>
+                    <div class="product-meta">ID: #{{ product.id }} • Qty: {{ quantity }}</div>
+                    <div class="product-meta">Category: {{ product.category }}</div>
+                {% endif %}
+            </div>
+            
+            <div style="margin-top: auto; padding-top: 40px; font-size: 12px; opacity: 0.6;">
+                <i class="fas fa-lock"></i> Secured by EasePay
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Options -->
+    <div class="payment-options">
+        <h2>Choose Payment Mode</h2>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('card')"><i class="far fa-credit-card"></i> Card</div>
+            <div class="tab" onclick="switchTab('upi')"><i class="fas fa-qrcode"></i> UPI / QR</div>
+            {% if order %}
+            <div class="tab" onclick="switchTab('khata')" style="color:#d97706;"><i class="fas fa-book"></i> Add to Khata</div>
+            {% endif %}
+        </div>
+        
+        <!-- Card Form -->
+        <form id="card-form" class="tab-content active" action="{{ url_for('payment.process_payment') }}" method="POST" onsubmit="handlePayment(event, 'Card')">
+            {% if order %}
+                <input type="hidden" name="is_cart" value="true">
+            {% else %}
+                <input type="hidden" name="product_id" value="{{ product.id }}">
+                <input type="hidden" name="quantity" value="{{ quantity }}">
+            {% endif %}
+            <input type="hidden" name="amount" value="{{ amount }}">
+            <input type="hidden" name="payment_method" value="Card">
+            
+            <div class="form-group">
+                <label class="form-label">Card Number <span style="color:#e53e3e">*</span></label>
+                <input type="text" id="cardNumber" class="form-input" placeholder="XXXX XXXX XXXX XXXX" maxlength="19" required
+                       oninput="formatCardNumber(this)" pattern="[0-9 ]{19}" autocomplete="off">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label class="form-label">Expiry Date <span style="color:#e53e3e">*</span></label>
+                    <input type="text" id="expiryDate" class="form-input" placeholder="MM/YY" maxlength="5" required
+                           oninput="formatExpiry(this)" pattern="(0[1-9]|1[0-2])\/[0-9]{2}" autocomplete="off">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label class="form-label">CVV <span style="color:#e53e3e">*</span></label>
+                    <input type="password" id="cvv" class="form-input" placeholder="123" maxlength="3" required
+                           oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,3)" pattern="[0-9]{3}" autocomplete="off">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Card Holder Name <span style="color:#e53e3e">*</span></label>
+                <input type="text" id="cardName" class="form-input" placeholder="Your Name" required
+                       oninput="this.value=this.value.replace(/[^a-zA-Z\s]/g,'')">
+            </div>
+            
+            <button type="submit" class="btn-pay">Pay ₹ {{ "{:,.2f}".format(amount) }}</button>
+        </form>
+        
+        <!-- UPI Form -->
+        <div id="upi-form" class="tab-content">
+             <div class="upi-container">
+                 <img src="{{ url_for('payment.qr_code') }}" class="qr-code" alt="UPI QR Code">
+                 <p style="font-size: 14px; color: #4a5568;">Scan with any UPI App to Pay</p>
+                 <p style="font-weight: 600; color: var(--primary);">shopease@dummybank</p>
+             </div>
+             
+             <form action="{{ url_for('payment.process_payment') }}" method="POST" onsubmit="handlePayment(event, 'UPI')">
+                {% if order %}
+                    <input type="hidden" name="is_cart" value="true">
+                {% else %}
+                    <input type="hidden" name="product_id" value="{{ product.id }}">
+                    <input type="hidden" name="quantity" value="{{ quantity }}">
+                {% endif %}
+                <input type="hidden" name="amount" value="{{ amount }}">
+                <input type="hidden" name="payment_method" value="UPI">
+                
+                <button type="submit" class="btn-pay" style="background: #48bb78;">Simulate Payment Success</button>
+             </form>
+        </div>
+
+        <!-- Khata (Credit) Form -->
+        {% if order %}
+        <div id="khata-form" class="tab-content">
+            <div class="khata-icon-big"><i class="fas fa-book"></i></div>
+            <div class="khata-info">
+                <h3><i class="fas fa-info-circle"></i> Adding to Khata (Credit / Udhaar)</h3>
+                <p>This amount will be recorded as <strong>credit (udhaar)</strong> in the customer's Khatabook.</p>
+                <p>The customer <strong>{{ order.customer_name }}</strong> can pay later via UPI, Card, or Cash.</p>
+                <p style="margin-top:10px;font-weight:600;color:#92400e;">Amount: ₹{{ "{:,.2f}".format(amount) }}</p>
+            </div>
+
+            <form action="{{ url_for('payment.process_payment') }}" method="POST" id="khataSubmitForm">
+                <input type="hidden" name="is_cart" value="true">
+                <input type="hidden" name="amount" value="{{ amount }}">
+                <input type="hidden" name="payment_method" value="Khata">
+
+                <div class="form-group">
+                    <label class="form-label">Description (Optional)</label>
+                    <input type="text" name="khata_description" class="form-input" placeholder="e.g. Monthly grocery, Festival items">
+                </div>
+
+                <button type="submit" class="btn-pay" style="background:#d97706;" onclick="return confirm('Add ₹{{ '{:,.2f}'.format(amount) }} to {{ order.customer_name }}\'s Khata?')">
+                    <i class="fas fa-book"></i> Add to Khata — ₹ {{ "{:,.2f}".format(amount) }}
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Dummy OTP Modal -->
+<div id="otp-modal" class="modal">
+    <div class="modal-content">
+        <h3>Verify Transaction</h3>
+        <p>Enter the OTP sent to your mobile</p>
+        <div class="form-group">
+            <input type="text" id="otpInput" class="form-input" placeholder="Enter OTP" maxlength="6" style="text-align: center; letter-spacing: 5px; font-size: 20px;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)">
+        </div>
+        <button class="btn-pay" onclick="verifyOtp()">Verify & Pay</button>
+        <div id="processing" style="display:none; margin-top:20px;">
+            <div class="spinner"></div>
+            <p>Processing Payment...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchTab(tab) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        // Find matching tab
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(t => {
+            if (t.textContent.trim().toLowerCase().includes(tab === 'card' ? 'card' : tab === 'upi' ? 'upi' : 'khata')) {
+                t.classList.add('active');
+            }
+        });
+        if (tab === 'card') document.getElementById('card-form').classList.add('active');
+        else if (tab === 'upi') document.getElementById('upi-form').classList.add('active');
+        else if (tab === 'khata') document.getElementById('khata-form').classList.add('active');
+    }
+
+    function formatCardNumber(input) {
+        let v = input.value.replace(/[^0-9]/g, '').slice(0, 16);
+        input.value = v.replace(/(\d{4})(?=\d)/g, '$1 ');
+    }
+
+    function formatExpiry(input) {
+        let v = input.value.replace(/[^0-9]/g, '').slice(0, 4);
+        if (v.length >= 3) v = v.slice(0,2) + '/' + v.slice(2);
+        input.value = v;
+    }
+
+    let formToSubmit = null;
+
+    function handlePayment(e, method) {
+        e.preventDefault();
+        formToSubmit = e.target;
+        if (method === 'Card') {
+            const cardNum = document.getElementById('cardNumber').value.replace(/\s/g,'');
+            const expiry = document.getElementById('expiryDate').value;
+            const cvv = document.getElementById('cvv').value;
+            const name = document.getElementById('cardName').value.trim();
+            if (!/^[0-9]{16}$/.test(cardNum)) { alert('Card number must be exactly 16 digits.'); return; }
+            if (!/^(0[1-9]|1[0-2])\/[0-9]{2}$/.test(expiry)) { alert('Expiry must be in MM/YY format.'); return; }
+            if (!/^[0-9]{3}$/.test(cvv)) { alert('CVV must be exactly 3 digits.'); return; }
+            if (!/^[a-zA-Z\s]+$/.test(name)) { alert('Card holder name must contain only letters.'); return; }
+            document.getElementById('otp-modal').style.display = 'flex';
+        } else {
+            const payBtn = e.target.querySelector('button');
+            payBtn.innerText = 'Verifying...';
+            payBtn.disabled = true;
+            setTimeout(() => { formToSubmit.submit(); }, 2000);
+        }
+    }
+
+    function verifyOtp() {
+        const otp = document.getElementById('otpInput').value.trim();
+        if (!otp) { alert('Please enter the OTP.'); return; }
+        document.getElementById('processing').style.display = 'block';
+        setTimeout(() => { formToSubmit.submit(); }, 1500);
+    }
+</script>
+
+</body>
+</html>

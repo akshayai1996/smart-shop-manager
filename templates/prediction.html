@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Demand Prediction - ShopEase{% endblock %}
+
+{% block content %}
+<div class="prediction-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h1><i class="fas fa-crystal-ball"></i> Demand Prediction</h1>
+            <p class="subtitle">AI-powered sales forecasting for the next 7 & 30 days</p>
+        </div>
+        <div class="header-actions">
+           <span class="refresh-time"><i class="fas fa-sync-alt"></i> Updated: Just now</span>
+        </div>
+    </div>
+
+    <!-- Prediction Summary -->
+    <div class="summary-cards">
+        <div class="card summary-card">
+            <div class="card-icon blue"><i class="fas fa-clipboard-list"></i></div>
+            <div class="card-info">
+                <h3>Total Products Analyzed</h3>
+                <p class="card-value">{{ predictions|length }}</p>
+            </div>
+        </div>
+        <div class="card summary-card">
+            <div class="card-icon red"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="card-info">
+                <h3>Action Needed</h3>
+                <p class="card-value">
+                    {{ predictions|selectattr('status_7', 'equalto', 'Reorder Needed')|list|length + predictions|selectattr('status_30', 'equalto', 'Critical Reorder')|list|length }}
+                </p>
+            </div>
+        </div>
+        <div class="card summary-card">
+             <div class="card-icon green"><i class="fas fa-check-circle"></i></div>
+             <div class="card-info">
+                 <h3>Healthy Stock</h3>
+                 <p class="card-value">
+                     {% set healthy_count = namespace(value=0) %}
+                     {% for p in predictions %}
+                        {% if p.status_7 == 'Sufficient' and p.status_30 == 'Sufficient' %}
+                            {% set healthy_count.value = healthy_count.value + 1 %}
+                        {% endif %}
+                     {% endfor %}
+                     {{ healthy_count.value }}
+                 </p>
+             </div>
+        </div>
+    </div>
+
+    <!-- Prediction Table -->
+    <div class="card main-table-card">
+        <div class="card-header">
+            <h2>Product Forecasts</h2>
+
+        </div>
+        <div class="table-responsive">
+            <table class="prediction-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Current Stock</th>
+                        <th>Avg Daily Sales</th>
+                        <th>Weekly Forecast (7 Days)</th>
+                        <th>Monthly Forecast (30 Days)</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in predictions %}
+                    <tr>
+                        <td class="product-name">
+                            <i class="fas fa-box"></i> {{ item.name }}
+                        </td>
+                        <td class="text-center">{{ item.current_stock }}</td>
+                        <td class="text-center">{{ item.avg_daily_sales }}</td>
+                        <td class="text-center">
+                            <strong>{{ item.predicted_7_days }}</strong>
+                            <span class="trend-indicator {{ 'negative' if item.status_7 != 'Sufficient' else 'positive' }}"></span>
+                        </td>
+                         <td class="text-center">
+                            <strong>{{ item.predicted_30_days }}</strong>
+                        </td>
+                        <td>
+                            {% if item.status_7 == 'Reorder Needed' or item.status_30 == 'Critical Reorder' %}
+                                <span class="status-badge reorder-needed">Reorder Needed</span>
+                            {% elif item.status_7 == 'Low Stock' or item.status_30 == 'Low Stock' %}
+                                <span class="status-badge low-stock">Low Stock</span>
+                            {% else %}
+                                <span class="status-badge sufficient">Sufficient</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if 'Reorder' in item.status_7 or 'Reorder' in item.status_30 %}
+                                <a href="{{ url_for('payment.index', product_id=item.id) }}" class="btn btn-sm btn-danger"><i class="fas fa-shopping-cart"></i> Reorder</a>
+                            {% elif 'Low' in item.status_7 or 'Low' in item.status_30 %}
+                                <a href="#" class="btn btn-sm btn-warning"><i class="fas fa-eye"></i> Monitor</a>
+                            {% else %}
+                                <span class="text-muted"><i class="fas fa-check"></i> OK</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .prediction-container {
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+    
+    .header-content h1 { font-size: 28px; margin-bottom: 5px; color: #2d3748; }
+    .subtitle { color: #718096; font-size: 16px; }
+    
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .summary-card {
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    
+    .card-icon {
+        width: 60px; height: 60px;
+        border-radius: 15px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 24px;
+    }
+    .card-icon.blue { background: #ebf4ff; color: #4299e1; }
+    .card-icon.red { background: #fff5f5; color: #f56565; }
+    .card-icon.green { background: #f0fff4; color: #48bb78; }
+    
+    .card-value { font-size: 28px; font-weight: bold; color: #2d3748; margin-top: 5px; }
+    
+    .prediction-table { width: 100%; border-collapse: collapse; }
+    .prediction-table th { background: #f7fafc; padding: 15px; text-align: left; color: #4a5568; border-bottom: 2px solid #e2e8f0; }
+    .prediction-table td { padding: 15px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+    
+    .status-badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .status-badge.reorder-needed { background: #fed7d7; color: #c53030; }
+    .status-badge.low-stock { background: #feebc8; color: #c05621; }
+    .status-badge.sufficient { background: #c6f6d5; color: #2f855a; }
+    .status-badge.insufficient-data { background: #e2e8f0; color: #718096; }
+    
+    .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 5px; text-decoration: none; color: white; display: inline-block; }
+    .btn-danger { background: #f56565; }
+    .btn-warning { background: #ed8936; }
+</style>
+{% endblock %}

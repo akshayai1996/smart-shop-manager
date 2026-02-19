@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Receipt - {{ receipt.receipt_no }} | ShopEase</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f4f7f6; margin: 0; padding: 30px; color: #333; }
+        
+        .actions-bar {
+            max-width: 600px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .actions-bar a { color: #38a169; text-decoration: none; font-size: 14px; }
+        .btn-print {
+            background: #38a169; color: white; border: none; padding: 10px 24px;
+            border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .btn-print:hover { background: #2f855a; }
+
+        .receipt-box {
+            max-width: 600px; margin: 0 auto; padding: 50px; background: #fff;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.08); border-radius: 12px; position: relative;
+            text-align: center;
+        }
+
+        .success-icon {
+            width: 80px; height: 80px; background: #c6f6d5; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 20px; font-size: 36px; color: #38a169;
+        }
+
+        .receipt-title { font-size: 24px; font-weight: 700; color: #2d3748; margin-bottom: 5px; }
+        .receipt-subtitle { color: #718096; font-size: 14px; margin-bottom: 30px; }
+
+        .receipt-details {
+            background: #f7fafc; border-radius: 8px; padding: 25px; text-align: left; margin-bottom: 25px;
+        }
+        .detail-row {
+            display: flex; justify-content: space-between; padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: #718096; font-size: 14px; }
+        .detail-value { font-weight: 600; color: #2d3748; font-size: 14px; }
+
+        .amount-highlight {
+            background: linear-gradient(135deg, #38a169, #276749);
+            color: white; padding: 20px; border-radius: 8px; margin-bottom: 25px;
+        }
+        .amount-highlight .label { font-size: 13px; opacity: 0.8; margin-bottom: 4px; }
+        .amount-highlight .value { font-size: 32px; font-weight: 700; }
+
+        .remaining-balance {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 20px; border-radius: 8px; margin-bottom: 25px;
+        }
+        .remaining-balance.has-balance { background: #fffbeb; border: 1px solid #fbbf24; }
+        .remaining-balance.clear { background: #f0fff4; border: 1px solid #48bb78; }
+
+        .footer-text { font-size: 12px; color: #a0aec0; margin-top: 20px; }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .actions-bar { display: none; }
+            .receipt-box { box-shadow: none; border-radius: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="actions-bar">
+    {% if from_history %}
+    <a href="{{ url_for('transactions.index') }}"><i class="fas fa-arrow-left"></i> Back to Transaction History</a>
+    {% else %}
+    <a href="{{ url_for('khatabook.index') }}"><i class="fas fa-arrow-left"></i> Back to Khatabook</a>
+    {% endif %}
+    <button class="btn-print" onclick="window.print()"><i class="fas fa-print"></i> Print Receipt</button>
+</div>
+
+<div class="receipt-box">
+    <div class="success-icon"><i class="fas fa-check"></i></div>
+    <div class="receipt-title">Payment Collected!</div>
+    <div class="receipt-subtitle">Receipt #{{ receipt.receipt_no }}</div>
+
+    <div class="amount-highlight">
+        <div class="label">Amount Received</div>
+        <div class="value">₹{{ "{:,.2f}".format(receipt.amount) }}</div>
+    </div>
+
+    <div class="receipt-details">
+        <div class="detail-row">
+            <span class="detail-label">Customer</span>
+            <span class="detail-value">{{ receipt.customer_name }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Phone</span>
+            <span class="detail-value">+91 {{ receipt.customer_phone }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Payment Method</span>
+            <span class="detail-value">{{ receipt.payment_method }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Date</span>
+            <span class="detail-value">{{ receipt.date }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Time</span>
+            <span class="detail-value">{{ receipt.time }}</span>
+        </div>
+    </div>
+
+    {% if receipt.remaining_balance > 0 %}
+    <div class="remaining-balance has-balance">
+        <span style="color:#92400e;font-weight:600;">Remaining Balance</span>
+        <span style="color:#92400e;font-weight:700;font-size:18px;">₹{{ "{:,.2f}".format(receipt.remaining_balance) }}</span>
+    </div>
+    {% else %}
+    <div class="remaining-balance clear">
+        <span style="color:#276749;font-weight:600;">
+            <i class="fas fa-check-circle"></i> All Dues Cleared!
+        </span>
+        <span style="color:#276749;font-weight:700;font-size:18px;">₹0.00</span>
+    </div>
+    {% endif %}
+
+    <div class="footer-text">
+        <p><i class="fas fa-shopping-bag"></i> ShopEase Retail Management</p>
+        <p>This is a computer-generated receipt.</p>
+    </div>
+</div>
+
+</body>
+</html>

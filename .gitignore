@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+*.spec
+
+# Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+
+# Flask / SQLite Database (contains real data - users should create their own)
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Sensitive / Credentials
+CREDENTIALS.txt
+.env
+*.key
+
+# Development / Debug scripts (not needed by end users)
+check_data.py
+check_pw.py
+fix_pw.py
+generate_daily_sales.py
+manage_data.py
+test_app_flow.py
+verify_deployment.py
+daily_sales_summary.csv
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+
+# Excel exports (runtime generated)
+customers.xlsx

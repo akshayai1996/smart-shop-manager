@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}ShopEase{% endblock %}</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="dashboard">
+      <div class="sidebar">
+        <h2><i class="fas fa-shopping-bag"></i> ShopEase</h2>
+        <div class="user-info">
+          <p>Welcome, {{ session.get('username', 'User') }}!</p>
+        </div>
+        <ul>
+          <li>
+            <a
+              href="/dashboard"
+              class="{{ 'active' if request.endpoint == 'dashboard' else '' }}"
+            >
+              <i class="fas fa-home"></i> Dashboard
+            </a>
+          </li>
+
+          <li>
+            <a
+              href="/stock"
+              class="{{ 'active' if request.endpoint and 'stock' in request.endpoint else '' }}"
+            >
+              <i class="fas fa-cubes"></i> Stock Management
+            </a>
+          </li>
+          <li>
+            <a
+              href="/analytics"
+              class="{{ 'active' if request.endpoint and 'analytics' in request.endpoint else '' }}"
+            >
+              <i class="fas fa-chart-line"></i> Analytics
+            </a>
+          </li>
+          <li>
+            <a
+              href="/reports"
+              class="{{ 'active' if request.endpoint and 'reports' in request.endpoint else '' }}"
+            >
+              <i class="fas fa-file-alt"></i> Reports
+            </a>
+          </li>
+          <li>
+            <a
+              href="{{ url_for('billing.index') }}"
+              class="{{ 'active' if request.endpoint and ('billing' in request.endpoint or 'payment' in request.endpoint) else '' }}"
+            >
+              <i class="fas fa-cash-register"></i> Billing
+            </a>
+          </li>
+          <li>
+            <a
+              href="{{ url_for('customers.index') }}"
+              class="{{ 'active' if request.endpoint and 'customers' in request.endpoint else '' }}"
+            >
+              <i class="fas fa-users"></i> Customers
+            </a>
+          </li>
+          <li>
+            <a
+              href="/prediction"
+              class="{{ 'active' if request.endpoint and 'prediction' in request.endpoint else '' }}"
+            >
+              <i class="fas fa-magic"></i> Prediction
+            </a>
+          </li>
+          <li>
+            <a
+              href="{{ url_for('khatabook.index') }}"
+              class="{{ 'active' if request.endpoint and 'khatabook' in request.endpoint else '' }}"
+            >
+              <i class="fas fa-book"></i> Khatabook
+            </a>
+          </li>
+          <li>
+            <a
+              href="{{ url_for('transactions.index') }}"
+              class="{{ 'active' if request.endpoint and 'transactions' in request.endpoint else '' }}"
+            >
+              <i class="fas fa-receipt"></i> Transactions
+            </a>
+          </li>
+          <li class="logout-item">
+            <a href="/logout"> <i class="fas fa-sign-out-alt"></i> Logout </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %} {% if
+        messages %}
+        <div class="flash-messages">
+          {% for category, message in messages %}
+          <div class="alert {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+        {% endif %} {% endwith %} {% block content %}{% endblock %}
+      </div>
+    </div>
+
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

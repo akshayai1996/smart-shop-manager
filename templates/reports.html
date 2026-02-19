@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - ShopEase{% endblock %}
+
+{% block content %}
+<div class="reports-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h1><i class="fas fa-file-alt"></i> Reports Center</h1>
+            <p class="subtitle">Download detailed financial and inventory reports</p>
+        </div>
+    </div>
+
+    <div class="reports-grid">
+        <!-- Sales Report Card -->
+        <div class="card report-card">
+            <div class="report-icon blue">
+                <i class="fas fa-file-invoice-dollar"></i>
+            </div>
+            <div class="report-content">
+                <h3>Sales Report</h3>
+                <p>Detailed transaction history and revenue summary for the last 30 days.</p>
+                <div class="report-meta">
+                    <span><i class="fas fa-clock"></i> 30-Day Rolling</span>
+                    <span><i class="fas fa-file-pdf"></i> PDF Format</span>
+                </div>
+                <a href="{{ url_for('reports.download_sales_pdf') }}" class="btn btn-primary btn-block">
+                    <i class="fas fa-download"></i> Download Report
+                </a>
+            </div>
+        </div>
+
+        <!-- P&L Report Card -->
+        <div class="card report-card">
+            <div class="report-icon green">
+                <i class="fas fa-balance-scale"></i>
+            </div>
+            <div class="report-content">
+                <h3>Profit & Loss Statement</h3>
+                <p>Analysis of revenue, cost of goods sold (COGS), and net profit margins.</p>
+                <div class="report-meta">
+                    <span><i class="fas fa-clock"></i> 30-Day Rolling</span>
+                    <span><i class="fas fa-file-pdf"></i> PDF Format</span>
+                </div>
+                <a href="{{ url_for('reports.download_pnl_pdf') }}" class="btn btn-success btn-block">
+                    <i class="fas fa-download"></i> Download Statement
+                </a>
+            </div>
+        </div>
+
+        <!-- Inventory Report Card -->
+        <div class="card report-card">
+            <div class="report-icon purple">
+                <i class="fas fa-boxes"></i>
+            </div>
+            <div class="report-content">
+                <h3>Inventory Status</h3>
+                <p>Complete list of current stock levels, valuation, and product details.</p>
+                <div class="report-meta">
+                    <span><i class="fas fa-sync"></i> Real-time</span>
+                    <span><i class="fas fa-file-excel"></i> Excel Format</span>
+                </div>
+                <a href="{{ url_for('reports.download_inventory_excel') }}" class="btn btn-purple btn-block">
+                    <i class="fas fa-download"></i> Download Inventory
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .reports-container {
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        margin-bottom: 30px;
+    }
+
+    .header-content h1 { font-size: 28px; margin-bottom: 5px; color: #2d3748; }
+    .subtitle { color: #718096; font-size: 16px; }
+
+    .reports-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+    }
+
+    .report-card {
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .report-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+
+    .report-icon {
+        width: 80px; height: 80px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 32px;
+        margin-bottom: 20px;
+    }
+
+    .report-icon.blue { background: #ebf8ff; color: #4299e1; }
+    .report-icon.green { background: #f0fff4; color: #48bb78; }
+    .report-icon.purple { background: #faf5ff; color: #9f7aea; }
+
+    .report-content h3 {
+        font-size: 20px;
+        margin-bottom: 10px;
+        color: #2d3748;
+    }
+
+    .report-content p {
+        color: #718096;
+        font-size: 14px;
+        margin-bottom: 20px;
+        line-height: 1.5;
+        min-height: 42px; /* Ensure alignment */
+    }
+
+    .report-meta {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 25px;
+        font-size: 12px;
+        color: #a0aec0;
+    }
+
+    .report-meta span {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .btn-block {
+        display: block;
+        width: 100%;
+        padding: 12px;
+        text-align: center;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: opacity 0.2s;
+    }
+
+    .btn-primary { background: #4299e1; color: white; }
+    .btn-success { background: #48bb78; color: white; }
+    .btn-purple { background: #9f7aea; color: white; }
+
+    .btn-block:hover { opacity: 0.9; }
+</style>
+{% endblock %}

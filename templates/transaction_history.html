@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Transaction History | ShopEase{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 style="margin:0;color:#2d3748;"><i class="fas fa-receipt" style="color:#667eea;"></i> Transaction History</h1>
+        <p style="color:#718096;margin-top:5px;">Last 7 days — Invoices & Payment Receipts</p>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="metrics-row">
+    <div class="metric-card">
+        <div class="metric-icon" style="background:#ebf4ff;color:#667eea;">
+            <i class="fas fa-file-invoice"></i>
+        </div>
+        <div class="metric-content">
+            <span class="metric-label">Total Invoices</span>
+            <span class="metric-value">{{ total_invoices }}</span>
+        </div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-icon" style="background:#ebf8ff;color:#3182ce;">
+            <i class="fas fa-rupee-sign"></i>
+        </div>
+        <div class="metric-content">
+            <span class="metric-label">Invoice Amount</span>
+            <span class="metric-value" style="color:#3182ce;">₹{{ "{:,.2f}".format(total_invoice_amount) }}</span>
+        </div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-icon" style="background:#f0fff4;color:#38a169;">
+            <i class="fas fa-hand-holding-usd"></i>
+        </div>
+        <div class="metric-content">
+            <span class="metric-label">Khata Receipts</span>
+            <span class="metric-value" style="color:#38a169;">{{ total_receipts }}</span>
+        </div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-icon" style="background:#f0fff4;color:#2f855a;">
+            <i class="fas fa-coins"></i>
+        </div>
+        <div class="metric-content">
+            <span class="metric-label">Collected</span>
+            <span class="metric-value" style="color:#2f855a;">₹{{ "{:,.2f}".format(total_receipt_amount) }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Tabs -->
+<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+    <button onclick="filterTxns('all')" id="filter-all" class="txn-filter-btn active-filter"
+            style="padding:8px 20px;border:2px solid #667eea;background:#667eea;color:white;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;">
+        <i class="fas fa-list"></i> All
+    </button>
+    <button onclick="filterTxns('invoice')" id="filter-invoice" class="txn-filter-btn"
+            style="padding:8px 20px;border:2px solid #667eea;background:white;color:#667eea;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;">
+        <i class="fas fa-file-invoice"></i> Invoices
+    </button>
+    <button onclick="filterTxns('khata_receipt')" id="filter-khata_receipt" class="txn-filter-btn"
+            style="padding:8px 20px;border:2px solid #38a169;background:white;color:#38a169;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;">
+        <i class="fas fa-hand-holding-usd"></i> Khata Receipts
+    </button>
+</div>
+
+<!-- Transaction List -->
+<div style="background:white;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);overflow:hidden;">
+    <div style="padding:20px 24px;border-bottom:2px solid #edf2f7;display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="margin:0;font-size:18px;color:#2d3748;">
+            <i class="fas fa-clock" style="color:#667eea;margin-right:8px;"></i>Recent Transactions
+        </h2>
+        <span style="font-size:13px;color:#718096;">{{ transactions|length }} records</span>
+    </div>
+
+    {% if transactions %}
+    <div id="txn-list">
+        {% for txn in transactions %}
+        <div class="txn-row" data-type="{{ txn.txn_type }}"
+             style="display:flex;align-items:center;padding:18px 24px;border-bottom:1px solid #f0f4f8;transition:background 0.15s;"
+             onmouseover="this.style.background='#f7fafc'" onmouseout="this.style.background='white'">
+
+            <!-- Icon -->
+            <div style="flex-shrink:0;margin-right:16px;">
+                {% if txn.txn_type == 'invoice' %}
+                    {% if txn.payment_method == 'Khata' %}
+                    <div style="width:44px;height:44px;background:#fffbeb;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-book" style="color:#d97706;font-size:18px;"></i>
+                    </div>
+                    {% else %}
+                    <div style="width:44px;height:44px;background:#ebf4ff;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-file-invoice" style="color:#667eea;font-size:18px;"></i>
+                    </div>
+                    {% endif %}
+                {% else %}
+                <div style="width:44px;height:44px;background:#f0fff4;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-hand-holding-usd" style="color:#38a169;font-size:18px;"></i>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Details -->
+            <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span style="font-weight:700;color:#2d3748;font-size:15px;">{{ txn.customer_name }}</span>
+                    {% if txn.txn_type == 'invoice' %}
+                        {% if txn.payment_method == 'Khata' %}
+                        <span style="background:#fffbeb;color:#92400e;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">CREDIT</span>
+                        {% else %}
+                        <span style="background:#ebf4ff;color:#3b5998;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">INVOICE</span>
+                        {% endif %}
+                    {% else %}
+                    <span style="background:#f0fff4;color:#276749;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">RECEIPT</span>
+                    {% endif %}
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:4px;flex-wrap:wrap;">
+                    <span style="color:#718096;font-size:13px;">
+                        <i class="fas fa-hashtag" style="font-size:10px;"></i> {{ txn.txn_ref }}
+                    </span>
+                    <span style="color:#a0aec0;font-size:12px;">•</span>
+                    <span style="color:#718096;font-size:13px;">
+                        <i class="far fa-clock" style="font-size:10px;"></i> {{ txn.date.strftime('%d %b %Y, %I:%M %p') }}
+                    </span>
+                    <span style="color:#a0aec0;font-size:12px;">•</span>
+                    <span style="color:#718096;font-size:13px;">
+                        {% if txn.payment_method == 'Card' %}
+                            <i class="far fa-credit-card" style="font-size:10px;"></i>
+                        {% elif txn.payment_method == 'UPI' %}
+                            <i class="fas fa-qrcode" style="font-size:10px;"></i>
+                        {% elif txn.payment_method == 'Cash' %}
+                            <i class="fas fa-money-bill-wave" style="font-size:10px;"></i>
+                        {% elif txn.payment_method == 'Khata' %}
+                            <i class="fas fa-book" style="font-size:10px;"></i>
+                        {% endif %}
+                        {{ txn.payment_method }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Amount -->
+            <div style="text-align:right;margin-right:20px;">
+                {% if txn.txn_type == 'invoice' %}
+                <div style="font-weight:700;font-size:17px;color:#2d3748;">₹{{ "{:,.2f}".format(txn.amount|float) }}</div>
+                {% else %}
+                <div style="font-weight:700;font-size:17px;color:#38a169;">+₹{{ "{:,.2f}".format(txn.amount|float) }}</div>
+                {% endif %}
+            </div>
+
+            <!-- View Button -->
+            <a href="{{ url_for('transactions.view_transaction', txn_id=txn.id) }}"
+               style="flex-shrink:0;padding:8px 18px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all 0.2s;box-shadow:0 2px 6px rgba(102,126,234,0.3);"
+               onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(102,126,234,0.4)'"
+               onmouseout="this.style.transform='none';this.style.boxShadow='0 2px 6px rgba(102,126,234,0.3)'">
+                <i class="fas fa-eye"></i>
+                {% if txn.txn_type == 'invoice' %}View Invoice{% else %}View Receipt{% endif %}
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding:60px 20px;text-align:center;">
+        <i class="fas fa-receipt" style="font-size:48px;color:#cbd5e0;margin-bottom:15px;display:block;"></i>
+        <p style="font-size:18px;color:#4a5568;margin-bottom:8px;">No transactions yet</p>
+        <p style="color:#718096;">Invoices and payment receipts from the last 7 days will appear here</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function filterTxns(type) {
+        // Update buttons
+        document.querySelectorAll('.txn-filter-btn').forEach(btn => {
+            btn.style.background = 'white';
+            btn.style.color = btn.style.borderColor;
+        });
+        const activeBtn = document.getElementById('filter-' + type);
+        activeBtn.style.background = activeBtn.style.borderColor;
+        activeBtn.style.color = 'white';
+
+        // Filter rows
+        document.querySelectorAll('.txn-row').forEach(row => {
+            if (type === 'all' || row.dataset.type === type) {
+                row.style.display = 'flex';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+</script>
+{% endblock %}

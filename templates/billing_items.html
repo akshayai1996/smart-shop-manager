@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Billing: Select Items - ShopEase{% endblock %}
+
+{% block content %}
+<div class="billing-list-container">
+    <div class="page-header">
+        <h1><i class="fas fa-shopping-cart"></i> Create Order</h1>
+        <div class="customer-badge">
+            <i class="fas fa-user"></i> {{ customer_name }}
+        </div>
+    </div>
+
+    <form action="{{ url_for('billing.checkout') }}" method="POST" id="billingForm">
+        <div class="card">
+            <div class="table-responsive">
+                <table class="billing-table">
+                    <thead>
+                        <tr>
+                            <th width="50">Select</th>
+                            <th>Product</th>
+                            <th width="100">Price</th>
+                            <th width="150">Quantity</th>
+                            <th width="100">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr class="item-row" data-price="{{ product.selling_price }}" data-max="{{ product.current_stock }}">
+                            <td class="text-center">
+                                <input type="checkbox" name="product_ids" value="{{ product.id }}" class="item-select" onchange="updateRow(this)" 
+                                {{ 'disabled' if product.current_stock <= 0 else '' }}>
+                            </td>
+                            <td>
+                                <div class="product-name" {{ 'style=opacity:0.5' if product.current_stock <= 0 else '' }}>{{ product.name }}</div>
+                                <small class="text-muted">{{ product.category }} | Stock: {{ product.current_stock }} {{ product.unit }}</small>
+                                {% if product.current_stock <= 0 %}<span style="color:red; font-size:11px; margin-left:5px;">(Out of Stock)</span>{% endif %}
+                            </td>
+                            <td>₹{{ "{:,.2f}".format(product.selling_price) }}</td>
+                            <td>
+                                <div class="qty-control disabled">
+                                    <button type="button" onclick="changeQty(this, -1)">-</button>
+                                    <input type="number" name="quantity_{{ product.id }}" value="1" min="1" max="{{ product.current_stock }}" oninput="updateQtyFromInput(this)">
+                                    <button type="button" onclick="changeQty(this, 1)">+</button>
+                                </div>
+                            </td>
+                            <td class="row-total">₹0.00</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="billing-footer">
+            <div class="grand-total">
+                <span>Total Payable:</span>
+                <span id="grandTotalDisplay">₹0.00</span>
+            </div>
+            <button type="submit" class="btn btn-success btn-lg" id="checkoutBtn" disabled>
+                Proceed to Pay <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+/* ... existing styles ... */
+    .billing-list-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+        padding-bottom: 100px; /* Space for footer */
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .customer-badge {
+        background: #ebf8ff;
+        color: #2b6cb0;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+
+    .billing-table { width: 100%; border-collapse: collapse; }
+    .billing-table th { background: #f7fafc; padding: 15px; text-align: left; color: #4a5568; }
+    .billing-table td { padding: 15px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+    
+    .qty-control {
+        display: flex;
+        align-items: center;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        width: 100px;
+        opacity: 0.5;
+        pointer-events: none;
+    }
+    
+    .qty-control.enabled {
+        opacity: 1;
+        pointer-events: auto;
+        border-color: #cbd5e0;
+    }
+    
+    .qty-control button {
+        background: #edf2f7;
+        border: none;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        font-weight: bold;
+        color: #4a5568;
+    }
+    
+    .qty-control input {
+        width: 40px;
+        height: 30px;
+        border: none;
+        text-align: center;
+        font-weight: 600;
+        /* Remove arrows */
+        -moz-appearance: textfield;
+    }
+    .qty-control input::-webkit-outer-spin-button,
+    .qty-control input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    
+    .billing-footer {
+        position: fixed;
+        bottom: 0; left: 0; width: 100%;
+        background: white;
+        padding: 20px;
+        box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 30px;
+        box-sizing: border-box;
+        z-index: 100;
+        padding-right: 50px; /* Adjust for layout */
+    }
+    
+    .grand-total {
+        font-size: 20px;
+        color: #2d3748;
+    }
+    
+    .grand-total span:last-child {
+        font-weight: bold;
+        font-size: 24px;
+        color: #2b6cb0;
+        margin-left: 10px;
+    }
+    
+    .btn-lg {
+        padding: 12px 30px;
+        font-size: 18px;
+    }
+</style>
+
+<script>
+    function updateRow(checkbox) {
+        const row = checkbox.closest('tr');
+        const qtyControl = row.querySelector('.qty-control');
+        const price = parseFloat(row.dataset.price);
+        const qtyInput = qtyControl.querySelector('input');
+        
+        if (checkbox.checked) {
+            qtyControl.classList.add('enabled');
+            qtyControl.classList.remove('disabled');
+        } else {
+            qtyControl.classList.remove('enabled');
+            qtyControl.classList.add('disabled');
+            qtyInput.value = 1; // Reset
+        }
+        
+        // Trigger validation in case default 1 > max (unlikely validation logic but safe)
+        updateQtyFromInput(qtyInput); 
+    }
+    
+    function changeQty(btn, change) {
+        const row = btn.closest('tr');
+        const input = btn.parentElement.querySelector('input');
+        const maxQty = parseFloat(row.dataset.max);
+        
+        let newVal = parseInt(input.value) + change;
+        
+        if (newVal < 1) newVal = 1;
+        if (newVal > maxQty) {
+            newVal = maxQty;
+            alert("Maximum available stock is " + maxQty);
+        }
+        
+        input.value = newVal;
+        
+        const checkbox = row.querySelector('.item-select');
+        const price = parseFloat(row.dataset.price);
+        
+        calculateRowTotal(row, price, newVal, checkbox.checked);
+        calculateGrandTotal();
+    }
+
+    function updateQtyFromInput(input) {
+        const row = input.closest('tr');
+        const maxQty = parseFloat(row.dataset.max);
+        
+        let newVal = parseInt(input.value);
+        
+        if (isNaN(newVal) || newVal < 1) newVal = 1;
+        
+        if (newVal > maxQty) {
+            newVal = maxQty;
+            alert("Maximum available stock is " + maxQty);
+            input.value = newVal; // Force correct value
+        }
+        
+        const checkbox = row.querySelector('.item-select');
+        const price = parseFloat(row.dataset.price);
+        
+        calculateRowTotal(row, price, newVal, checkbox.checked);
+        calculateGrandTotal();
+    }
+    
+    function calculateRowTotal(row, price, qty, isChecked) {
+        const totalCell = row.querySelector('.row-total');
+        if (isChecked) {
+            const total = price * qty;
+            totalCell.innerText = '₹' + total.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            row.dataset.total = total;
+        } else {
+            totalCell.innerText = '₹0.00';
+            row.dataset.total = 0;
+        }
+    }
+    
+    function calculateGrandTotal() {
+        let total = 0;
+        document.querySelectorAll('.item-row').forEach(row => {
+            total += parseFloat(row.dataset.total || 0);
+        });
+        
+        document.getElementById('grandTotalDisplay').innerText = '₹' + total.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        const btn = document.getElementById('checkoutBtn');
+        if (total > 0) {
+            btn.disabled = false;
+        } else {
+            btn.disabled = true;
+        }
+    }
+</script>
+{% endblock %}

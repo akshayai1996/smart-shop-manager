@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}{{ customer.name }} - Khata Ledger | ShopEase{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="{{ url_for('khatabook.index') }}" style="color:#667eea;text-decoration:none;font-size:14px;display:inline-block;margin-bottom:8px;">
+            <i class="fas fa-arrow-left"></i> Back to Khatabook
+        </a>
+        <h1 style="margin:0;color:#2d3748;">
+            <i class="fas fa-user-circle" style="color:#667eea;"></i> {{ customer.name }}
+        </h1>
+        <p style="color:#718096;margin-top:5px;">
+            <i class="fas fa-phone"></i> {{ customer.phone }}
+            {% if customer.address %} · <i class="fas fa-map-marker-alt"></i> {{ customer.address }}{% endif %}
+        </p>
+    </div>
+</div>
+
+<!-- Balance Card -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin-bottom:30px;">
+    <div style="background:{% if customer.balance and customer.balance|float > 0 %}linear-gradient(135deg,#e53e3e,#c53030){% elif customer.balance and customer.balance|float < 0 %}linear-gradient(135deg,#38a169,#276749){% else %}linear-gradient(135deg,#667eea,#5a67d8){% endif %};padding:30px;border-radius:16px;color:white;box-shadow:0 4px 15px rgba(0,0,0,0.15);">
+        <div style="font-size:14px;opacity:0.9;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Current Balance</div>
+        <div style="font-size:36px;font-weight:800;">₹{{ "{:,.2f}".format(customer.balance|float|abs) }}</div>
+        <div style="margin-top:8px;font-size:15px;opacity:0.9;">
+            {% if customer.balance and customer.balance|float > 0 %}
+                <i class="fas fa-exclamation-triangle"></i> Amount Pending (Customer owes)
+            {% elif customer.balance and customer.balance|float < 0 %}
+                <i class="fas fa-info-circle"></i> Overpaid by customer
+            {% else %}
+                <i class="fas fa-check-circle"></i> All Clear — No Dues
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="background:white;padding:30px;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08);display:flex;flex-direction:column;justify-content:center;">
+        <h3 style="margin:0 0 15px;color:#2d3748;">Quick Actions</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button onclick="document.getElementById('creditModal').style.display='flex'" 
+                    style="padding:10px 20px;background:#e53e3e;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">
+                <i class="fas fa-plus"></i> Add Udhaar
+            </button>
+
+            <!-- Receive Payment Dropdown -->
+            {% if customer.balance and customer.balance|float > 0 %}
+            <div style="position:relative;display:inline-block;" id="payDropdownContainer">
+                <button onclick="togglePayDropdown()" 
+                        style="padding:10px 20px;background:#38a169;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">
+                    <i class="fas fa-hand-holding-usd"></i> Receive Payment <i class="fas fa-caret-down" style="margin-left:4px;"></i>
+                </button>
+                <div id="payDropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:6px;background:white;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,0.15);width:220px;z-index:100;overflow:hidden;">
+                    <a href="{{ url_for('payment.khata_payment', customer_id=customer.id, mode='upi', amount=customer.balance|float) }}" 
+                       style="display:flex;align-items:center;gap:12px;padding:14px 18px;text-decoration:none;color:#2d3748;border-bottom:1px solid #edf2f7;transition:background 0.15s;"
+                       onmouseover="this.style.background='#f7fafc'" onmouseout="this.style.background='white'">
+                        <i class="fas fa-qrcode" style="color:#667eea;font-size:18px;width:24px;text-align:center;"></i>
+                        <div><div style="font-weight:600;">UPI / QR</div><div style="font-size:11px;color:#718096;">Scan & Pay</div></div>
+                    </a>
+                    <a href="{{ url_for('payment.khata_payment', customer_id=customer.id, mode='card', amount=customer.balance|float) }}" 
+                       style="display:flex;align-items:center;gap:12px;padding:14px 18px;text-decoration:none;color:#2d3748;border-bottom:1px solid #edf2f7;transition:background 0.15s;"
+                       onmouseover="this.style.background='#f7fafc'" onmouseout="this.style.background='white'">
+                        <i class="far fa-credit-card" style="color:#3399cc;font-size:18px;width:24px;text-align:center;"></i>
+                        <div><div style="font-weight:600;">Card</div><div style="font-size:11px;color:#718096;">Debit / Credit Card</div></div>
+                    </a>
+                    <a href="{{ url_for('payment.khata_payment', customer_id=customer.id, mode='cash', amount=customer.balance|float) }}" 
+                       style="display:flex;align-items:center;gap:12px;padding:14px 18px;text-decoration:none;color:#2d3748;transition:background 0.15s;"
+                       onmouseover="this.style.background='#f7fafc'" onmouseout="this.style.background='white'">
+                        <i class="fas fa-money-bill-wave" style="color:#38a169;font-size:18px;width:24px;text-align:center;"></i>
+                        <div><div style="font-weight:600;">Cash</div><div style="font-size:11px;color:#718096;">Direct cash collection</div></div>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Ledger Entries -->
+<div style="background:white;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);overflow:hidden;">
+    <div style="padding:20px 24px;border-bottom:2px solid #edf2f7;">
+        <h2 style="margin:0;font-size:18px;color:#2d3748;"><i class="fas fa-list" style="color:#667eea;margin-right:8px;"></i>Transaction History</h2>
+    </div>
+
+    {% if entries %}
+    <table class="styled-table" style="margin:0;">
+        <thead>
+            <tr>
+                <th style="background:#f7fafc;color:#4a5568;font-weight:600;">Date & Time</th>
+                <th style="background:#f7fafc;color:#4a5568;font-weight:600;">Type</th>
+                <th style="background:#f7fafc;color:#4a5568;font-weight:600;">Description</th>
+                <th style="background:#f7fafc;color:#4a5568;font-weight:600;text-align:right;">Credit (Udhaar)</th>
+                <th style="background:#f7fafc;color:#4a5568;font-weight:600;text-align:right;">Payment</th>
+                <th style="background:#f7fafc;color:#4a5568;font-weight:600;text-align:right;">Running Balance</th>
+                <th style="background:#f7fafc;color:#4a5568;font-weight:600;text-align:center;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+            <tr style="transition:background 0.15s;" onmouseover="this.style.background='#f7fafc'" onmouseout="this.style.background='white'">
+                <td style="color:#4a5568;font-size:13px;">
+                    {{ entry.date.strftime('%d %b %Y') }}<br>
+                    <span style="color:#a0aec0;">{{ entry.date.strftime('%I:%M %p') }}</span>
+                </td>
+                <td>
+                    {% if entry.entry_type == 'credit' %}
+                        <span style="background:#fed7d7;color:#c53030;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">
+                            <i class="fas fa-arrow-up"></i> Credit
+                        </span>
+                    {% else %}
+                        <span style="background:#c6f6d5;color:#276749;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">
+                            <i class="fas fa-arrow-down"></i> Payment
+                        </span>
+                    {% endif %}
+                </td>
+                <td style="color:#4a5568;">{{ entry.description or '—' }}</td>
+                <td style="text-align:right;font-weight:600;color:#e53e3e;">
+                    {% if entry.entry_type == 'credit' %}₹{{ "{:,.2f}".format(entry.amount|float) }}{% else %}—{% endif %}
+                </td>
+                <td style="text-align:right;font-weight:600;color:#38a169;">
+                    {% if entry.entry_type == 'payment' %}₹{{ "{:,.2f}".format(entry.amount|float) }}{% else %}—{% endif %}
+                </td>
+                <td style="text-align:right;font-weight:700;font-size:15px;
+                    {% if running_balances[loop.index0] > 0 %}color:#e53e3e;{% elif running_balances[loop.index0] < 0 %}color:#38a169;{% else %}color:#718096;{% endif %}">
+                    ₹{{ "{:,.2f}".format(running_balances[loop.index0]|abs) }}
+                    {% if running_balances[loop.index0] > 0 %}<span style="font-size:11px;"> DR</span>{% elif running_balances[loop.index0] < 0 %}<span style="font-size:11px;"> CR</span>{% endif %}
+                </td>
+                <td style="text-align:center;">
+                    <form method="POST" action="{{ url_for('khatabook.delete_entry', entry_id=entry.id) }}" 
+                          onsubmit="return confirm('Delete this entry?');" style="display:inline;">
+                        <button type="submit" style="background:none;border:none;color:#a0aec0;cursor:pointer;font-size:16px;transition:color 0.2s;" 
+                                onmouseover="this.style.color='#e53e3e'" onmouseout="this.style.color='#a0aec0'">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="no-data" style="padding:60px 20px;">
+        <i class="fas fa-receipt" style="font-size:48px;color:#cbd5e0;margin-bottom:15px;display:block;"></i>
+        <p style="font-size:18px;color:#4a5568;margin-bottom:8px;">No transactions yet</p>
+        <p style="color:#718096;">Use the buttons above to record credit or payment</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ========== ADD CREDIT MODAL ========== -->
+<div id="creditModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:16px;padding:35px;width:90%;max-width:450px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;">
+            <h2 style="margin:0;color:#e53e3e;font-size:22px;"><i class="fas fa-plus-circle"></i> Record Udhaar</h2>
+            <button onclick="document.getElementById('creditModal').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:22px;color:#a0aec0;">✕</button>
+        </div>
+        <form method="POST" action="{{ url_for('khatabook.add_entry') }}">
+            <input type="hidden" name="entry_type" value="credit">
+            <input type="hidden" name="customer_id" value="{{ customer.id }}">
+            <div class="form-group">
+                <label style="font-weight:600;color:#4a5568;">Credit Amount (₹) *</label>
+                <input type="number" name="amount" required step="0.01" min="0.01" placeholder="e.g. 500" style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;">
+            </div>
+            <div class="form-group">
+                <label style="font-weight:600;color:#4a5568;">Description</label>
+                <input type="text" name="description" placeholder="e.g. 2kg Rice, 1L Oil" style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;">
+            </div>
+            <button type="submit" style="width:100%;padding:14px;background:#e53e3e;color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;">
+                <i class="fas fa-arrow-up"></i> Record Credit (Udhaar)
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function togglePayDropdown() {
+        const dd = document.getElementById('payDropdown');
+        dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+    }
+    // Close dropdown on outside click
+    document.addEventListener('click', function(e) {
+        const container = document.getElementById('payDropdownContainer');
+        if (container && !container.contains(e.target)) {
+            document.getElementById('payDropdown').style.display = 'none';
+        }
+    });
+</script>
+
+{% endblock %}

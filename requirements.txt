@@ -1,0 +1,9 @@
+flask
+flask-sqlalchemy
+gunicorn
+numpy
+pandas
+Werkzeug
+fpdf
+openpyxl
+qrcode[pil]
