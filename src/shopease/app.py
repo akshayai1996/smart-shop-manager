@@ -5,15 +5,63 @@ from sqlalchemy import func, extract, desc, text
 import calendar
 import math
 import os
+import sys
 import random
 import json
 from werkzeug.security import generate_password_hash, check_password_hash
 
-app = Flask(__name__)
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller/cx_Freeze """
+    if getattr(sys, 'frozen', False):
+        if hasattr(sys, '_MEIPASS'):
+            # PyInstaller
+            base_path = sys._MEIPASS
+        else:
+            # cx_Freeze
+            base_path = os.path.dirname(sys.executable)
+    else:
+        # Dev
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    return os.path.join(base_path, relative_path)
+
+app = Flask(__name__, template_folder=resource_path('templates'), static_folder=resource_path('static'))
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-please-change-in-prod')
 
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance', 'shop.db')
+if getattr(sys, 'frozen', False):
+    # If the application is run as a bundle, use APPDATA
+    application_path = os.path.join(os.getenv('APPDATA'), 'ShopEase')
+    if not os.path.exists(application_path):
+        os.makedirs(application_path)
+    
+    db_path = os.path.join(application_path, 'shop.db')
+    
+    # Check if DB exists in AppData, if not, copy from bundle (Demo Data)
+    if not os.path.exists(db_path):
+        import shutil
+        # bundled_db_path depends on whether we use PyInstaller or cx_Freeze
+        if hasattr(sys, '_MEIPASS'):
+             bundled_db_path = os.path.join(sys._MEIPASS, 'shop.db')
+        else:
+             bundled_db_path = os.path.join(os.path.dirname(sys.executable), 'shop.db')
+        
+        if os.path.exists(bundled_db_path):
+            try:
+                shutil.copy2(bundled_db_path, db_path)
+            except Exception as e:
+                print(f"Error copying demo DB: {e}")
+
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
+else:
+    # Dev: DB is in project_root/instance/shop.db
+    # app.py is in project_root/src/shopease/app.py
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    db_path = os.path.join(project_root, 'instance', 'shop.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    print(f" * Development Mode: Using database at {db_path}")
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 from models import db, User, Product, StockIn, Sale, Customer, KhataEntry, Transaction
@@ -689,6 +737,65 @@ def optimize_db():
             print(f"Optimization warning: {e}")
 
 if __name__ == "__main__":
-    optimize_db()
-    auto_correct_timestamps()
-    app.run(host="0.0.0.0", port=5000)
+    import traceback
+    try:
+        optimize_db()
+        
+        # Auto-generate daily data if missing (for demo feel)
+        try:
+            # Explicit import to ensure cx_Freeze picks it up (needs to be top level usually, but here dynamic)
+            # If failed, we log it
+            from generate_daily_sales import DailySalesGenerator
+            from models import Sale
+            from datetime import datetime
+            import threading
+            
+            def check_data():
+                with app.app_context():
+                    try:
+                        # Quick check if we have data for 'today' or 'yesterday'
+                        today = datetime.now()
+                        yesterday = today - timedelta(days=1)
+                        
+                        count = Sale.query.filter(
+                            Sale.user_id == 1,
+                            Sale.date >= yesterday
+                        ).count()
+                        
+                        if count < 5:
+                            print("📉 Demo data needs refresh/update...")
+                            # Extract DB path from URI
+                            db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+                            if db_uri.startswith('sqlite:///'):
+                                current_db_path = db_uri.replace('sqlite:///', '')
+                            else:
+                                current_db_path = 'instance/shop.db' # Fallback
+                                
+                            # Run generator in separate thread to not block startup
+                            threading.Thread(target=lambda: DailySalesGenerator(db_path=current_db_path).run()).start()
+                    except Exception as e:
+                        print(f"Data check error: {e}")
+
+            check_data()
+        except ImportError as e:
+            print(f"Import Error for generator: {e}")
+        except Exception as e:
+            print(f"Auto-gen setup error: {e}")
+
+        auto_correct_timestamps()
+        
+        # Explicitly print startup message
+        print("Starting Flask server...")
+        app.run(host="127.0.0.1", port=5000, threaded=True)
+        
+    except Exception as e:
+        # Log fatal error to file
+        error_msg = f"Fatal Error:\n{traceback.format_exc()}"
+        print(error_msg)
+        try:
+            log_path = os.path.join(os.getenv('APPDATA'), 'ShopEase', 'crash.log')
+            with open(log_path, 'w') as f:
+                f.write(error_msg)
+        except:
+            pass
+        input("Press Enter to exit...") # Keep console open on error

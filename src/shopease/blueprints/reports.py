@@ -4,6 +4,7 @@ from fpdf import FPDF
 import pandas as pd
 import io
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 reports_bp = Blueprint('reports', __name__)
 
@@ -36,8 +37,8 @@ def download_sales_pdf():
     
     # Sales Summary
     sales = db.session.query(Sale).filter(Sale.date >= start_date).all()
-    total_sales = sum(s.total_amount for s in sales)
-    total_items = sum(s.quantity for s in sales)
+    total_sales = sum((s.total_amount or Decimal(0)) for s in sales)
+    total_items = sum((s.quantity or 0) for s in sales)
     
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, f"Sales Summary (Last 30 Days)", 0, 1)
@@ -100,7 +101,7 @@ def download_inventory_excel():
             'Unit': p.unit,
             'Cost Price': p.cost_price,
             'Selling Price': p.selling_price,
-            'Stock Value': p.current_stock * p.cost_price
+            'Stock Value': (Decimal(str(p.current_stock)) if p.current_stock is not None else Decimal(0)) * (p.cost_price or Decimal(0))
         })
     
     df = pd.DataFrame(data)
@@ -129,17 +130,19 @@ def download_pnl_pdf():
     start_date = end_date - timedelta(days=30)
     
     # Fetch Sales (Revenue)
+    # Fetch Sales (Revenue)
     sales = db.session.query(Sale).filter(Sale.date >= start_date).all()
-    total_revenue = sum(s.total_amount for s in sales)
+    # Handle possible None values in total_amount
+    total_revenue = sum((s.total_amount or Decimal(0)) for s in sales)
     
     # Calculate COGS (Cost of Goods Sold)
-    total_cogs = 0
+    total_cogs = Decimal(0)
     for sale in sales:
+        # Optim optimization: Pre-fetch products or allow N+1 for now (small scale)
         product = Product.query.get(sale.product_id)
-        if product:
+        if product and product.cost_price is not None and sale.quantity is not None:
              # Use current cost price as approximation since we don't track historical cost per batch yet
-            total_cogs += sale.quantity * product.cost_price
-            
+            total_cogs += Decimal(str(sale.quantity)) * product.cost_price
     gross_profit = total_revenue - total_cogs
     net_profit = gross_profit # Assuming no other expenses for now
     

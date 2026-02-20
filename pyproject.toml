@@ -1,0 +1,34 @@
+[tool.briefcase]
+project_name = "ShopEase"
+bundle = "com.shopease"
+version = "1.0.0"
+url = "https://github.com/akshayai1996/smart-shop-manager"
+license = { file = "LICENSE" }
+author = "akshayai1996"
+author_email = "contact@example.com"
+
+[tool.briefcase.app.shopease]
+formal_name = "ShopEase"
+description = "Smart Shop Manager"
+long_description = "A full-featured retail management web app built with Python Flask."
+sources = ["src/shopease"]
+requires = [
+    "flask",
+    "flask-sqlalchemy",
+    "gunicorn",
+    "numpy",
+    "pandas",
+    "Werkzeug",
+    "fpdf",
+    "openpyxl",
+    "qrcode[pil]",
+]
+test_requires = ["pytest"]
+
+[tool.briefcase.app.shopease.windows]
+requires = []
+
+# Application Entry Point
+# Briefcase requires an entry point. Since this is a Flask app, we need to wrap it.
+# We will create a `__main__.py` or specify the module path.
+# For Flask, it's a bit tricky as Briefcase expects a GUI app by default, but we can wrap it.

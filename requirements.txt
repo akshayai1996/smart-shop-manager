@@ -7,3 +7,4 @@ Werkzeug
 fpdf
 openpyxl
 qrcode[pil]
+pyinstaller
