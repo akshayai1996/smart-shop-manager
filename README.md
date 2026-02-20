@@ -1,193 +1,68 @@
-# 🛒 Smart Shop Manager
+# ShopEase - Smart Shop Manager
 
-> A full-featured retail management web app built with **Python Flask**. Manage your entire shop from one dashboard — billing, inventory, AI-powered sales prediction, customer CRM, Khatabook, and real-time analytics.
+ShopEase is a powerful, standalone retail management application designed for small to medium-sized businesses. It provides features for billing, inventory management, customer khtabook, and detailed profit & loss analytics.
 
----
+## 🚀 Two Ways to Use ShopEase
 
-## ✨ Features
+### 1. Standalone Desktop App (Recommended)
 
-| Module                  | Description                                                                                       |
-| ----------------------- | ------------------------------------------------------------------------------------------------- |
-| 📊 **Dashboard**        | Real-time overview — today's revenue, monthly sales, low-stock alerts, recent transactions        |
-| 📦 **Stock Management** | Add products, restock inventory, view current stock levels with units                             |
-| 🧾 **Billing / POS**    | Create customer orders, select multiple products with quantity validation, auto-generate invoices |
-| 💳 **Payments**         | Accept Card, UPI/QR, and Khata (Credit) payments with invoice generation                          |
-| 🤖 **AI Prediction**    | Predict weekly & monthly demand per product using sales history; automated reorder alerts         |
-| 📈 **Analytics**        | Interactive charts — daily/monthly revenue trends, top products, category breakdown               |
-| 📋 **Reports**          | Downloadable sales reports with date range filtering                                              |
-| 👥 **Customer CRM**     | Maintain customer profiles with purchase history                                                  |
-| 📒 **Khatabook**        | Track credit sales and collect payments with full ledger per customer                             |
-| 🧾 **Transactions**     | Full transaction history with invoice reference numbers                                           |
+The easiest way to use ShopEase on Windows. No Python installation required.
+
+- **Download**: Go to the `dist/` folder and download `shopease-desktop Setup 1.0.0.exe`.
+- **Install**: Run the installer. It will install the application and create a shortcut on your Desktop.
+- **Run**: Launch "ShopEase" from your Desktop.
+- **Data**: The app automatically generates 6 months of demo data (up to today's date) on first launch so you can explore the features immediately.
 
 ---
 
-## 🖥️ Tech Stack
+### 2. Python Source Code (Technical/Development)
 
-- **Backend:** Python 3, Flask, Flask-SQLAlchemy
-- **Database:** SQLite (auto-created on first run)
-- **Frontend:** HTML5, CSS3, Vanilla JavaScript
-- **Charts:** Chart.js
-- **Icons:** Font Awesome 6
-- **PDF/Invoice:** FPDF
-- **Payments QR:** qrcode[pil]
-- **Excel Support:** openpyxl, pandas
+If you want to run the application from the source or contribute to development.
 
----
+#### Prerequisites
 
-## 🚀 Installation & Setup
+- Python 3.10 or higher
+- Git LFS (needed to download the installer file)
 
-### Prerequisites
+#### Installation
 
-- Python 3.9 or higher
-- pip (Python package manager)
-- Git
+1.  **Clone the repo**:
+    ```bash
+    git clone https://github.com/akshayai1996/smart-shop-manager.git
+    cd smart-shop-manager
+    ```
+2.  **Create a virtual environment**:
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
+3.  **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
----
+#### Running the App
 
-### Step 1 — Clone the Repository
-
-```bash
-git clone https://github.com/akshayai1996/smart-shop-manager.git
-cd smart-shop-manager
-```
-
----
-
-### Step 2 — Create a Virtual Environment
-
-```bash
-# Windows
-python -m venv .venv
-.venv\Scripts\activate
-
-# macOS / Linux
-python3 -m venv .venv
-source .venv/bin/activate
-```
+1.  **Start the Flask Server**:
+    ```bash
+    python app.py
+    ```
+2.  **Access the App**: Open your browser and go to `http://127.0.0.1:5000`.
 
 ---
 
-### Step 3 — Install Dependencies
+## 📊 Key Features
 
-```bash
-pip install -r requirements.txt
-```
+- **Dynamic Dashboard**: Real-time sales, revenue, and profit metrics.
+- **Smart Billing**: Quick search for products and instant invoice generation.
+- **Inventory Tracking**: Stock-in history and low-stock alerts.
+- **Khatabook**: Track customer credit (Udhaar) and payment history.
+- **Detailed Reports**: Download Sales, Inventory, and P&L reports in PDF/Excel format.
 
----
+## 🛠 Tech Stack
 
-### Step 4 — Run the Application
-
-```bash
-python app.py
-```
-
-The app will start at **http://localhost:5000**
-
-> ✅ The database (`instance/shop.db`) is created automatically on first run. No manual setup needed.
-
----
-
-### Step 5 — Register & Login
-
-1. Open **http://localhost:5000** in your browser
-2. Click **Register** to create your shop account
-3. Login with your credentials
-4. You're in! 🎉
-
----
-
-## 📁 Project Structure
-
-```
-smart-shop-manager/
-│
-├── app.py                  # Main Flask application & routes
-├── models.py               # Database models (SQLAlchemy)
-├── requirements.txt        # Python dependencies
-│
-├── blueprints/             # Modular Flask blueprints
-│   ├── billing.py          # Order creation flow
-│   ├── customers.py        # Customer CRM
-│   ├── khatabook.py        # Credit book management
-│   ├── payment.py          # Payment processing & invoices
-│   ├── prediction.py       # AI demand forecasting
-│   ├── reports.py          # Report generation
-│   └── transactions.py     # Transaction history
-│
-├── templates/              # Jinja2 HTML templates
-│   ├── base.html           # Base layout with sidebar
-│   ├── dashboard.html      # Main dashboard
-│   ├── stock.html          # Inventory management
-│   ├── billing_*.html      # Billing flow pages
-│   ├── payment.html        # Payment gateway page
-│   ├── analytics.html      # Charts & analytics
-│   ├── khatabook*.html     # Khatabook pages
-│   └── ...                 # Other templates
-│
-└── static/
-    └── style.css           # Global stylesheet
-```
-
----
-
-## 🔑 Default Credentials
-
-> There are no default credentials. **Register a new account** on first use.
-
----
-
-## ⚙️ Configuration
-
-The app uses a secret key for sessions. You can change it by setting an environment variable:
-
-```bash
-# Windows (PowerShell)
-$env:SECRET_KEY = "your-super-secret-key"
-
-# macOS / Linux
-export SECRET_KEY="your-super-secret-key"
-```
-
-If not set, a default development key is used _(not recommended for production)_.
-
----
-
-## 🌐 Deploying to Production
-
-For production deployment (e.g., on a VPS or cloud server):
-
-```bash
-pip install gunicorn
-gunicorn -w 4 -b 0.0.0.0:8000 app:app
-```
-
-Or use **Render**, **Railway**, or **PythonAnywhere** for free hosting. Make sure to:
-
-- Set `SECRET_KEY` as an environment variable
-- Use a persistent disk for the `instance/` folder (SQLite database)
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a new branch: `git checkout -b feature/your-feature-name`
-3. Make your changes and commit: `git commit -m "Add: feature description"`
-4. Push to your fork: `git push origin feature/your-feature-name`
-5. Open a Pull Request
-
----
-
-## 📄 License
-
-This project is open-source and available under the [MIT License](LICENSE).
-
----
-
-## 👨‍💻 Author
-
-Made with ❤️ by **[akshayai1996](https://github.com/akshayai1996)**
-
----
-
-> ⭐ If you found this useful, please give it a star on GitHub!
+- **Backend**: Flask (Python)
+- **Database**: SQLite
+- **Frontend**: HTML5, CSS3, Vanilla JS
+- **Desktop Layer**: Electron
+- **Report Engine**: FPDF (PDFs), Pandas/OpenPyXL (Excel)
