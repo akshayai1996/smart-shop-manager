@@ -5,13 +5,21 @@ from datetime import datetime, timedelta
 import pandas as pd
 import calendar
 from collections import defaultdict
-from app import app, db
+import sqlite3
+import random
+import numpy as np
+from datetime import datetime, timedelta
+import pandas as pd
+import calendar
+from collections import defaultdict
+import json
 
 class DailySalesGenerator:
-    def __init__(self):
+    def __init__(self, db_path='instance/shop.db'):
         self.conn = None
         self.cursor = None
         self.user_id = 1
+        self.db_path = db_path
         
         # Product catalog with realistic daily sales patterns
         self.products = [
@@ -48,23 +56,31 @@ class DailySalesGenerator:
             [30, "Bisleri", "Beverages", "liter", 20, 12, 30, 1.2],
         ]
         
-    def setup_database(self):
+    def setup_database(self, app_instance=None, db_instance=None):
         """Setup database connection and tables"""
-        print("🔄 Recreating database schema...")
-        with app.app_context():
-            db.drop_all()
-            db.create_all()
-            
-        self.conn = sqlite3.connect('instance/shop.db')
+        print("Recreating database schema...")
+        
+        if app_instance and db_instance:
+             with app_instance.app_context():
+                db_instance.drop_all()
+                db_instance.create_all()
+        
+        self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
         
         # Create demo user
-        self.cursor.execute('''
-            INSERT INTO user (id, username, password, shop_name)
-            VALUES (?, ?, ?, ?)
-        ''', (1, 'demo_shop', 'password123', 'Daily Sales Store'))
+        try:
+            self.cursor.execute('''
+                INSERT INTO user (id, username, password, shop_name)
+                VALUES (?, ?, ?, ?)
+            ''', (1, 'demo_shop', 'password123', 'Daily Sales Store'))
+        except sqlite3.IntegrityError:
+            pass # User might already exist if we didn't drop tables
         
-        # Insert products
+        # Insert products - clear first if we didn't drop
+        if not (app_instance and db_instance):
+            self.cursor.execute('DELETE FROM product WHERE user_id = ?', (self.user_id,))
+
         for p in self.products:
             self.cursor.execute('''
                 INSERT INTO product (id, name, category, unit, selling_price, cost_price, current_stock, user_id)
@@ -72,12 +88,43 @@ class DailySalesGenerator:
             ''', (p[0], p[1], p[2], p[3], p[4], p[5], p[6] * 30, self.user_id))
         
         self.conn.commit()
-        print("✅ Database setup complete")
+        print("Database setup complete")
     
     def generate_daily_sales(self):
-        """Generate daily sales for last 6 months"""
-        start_date = datetime(2025, 8, 1)
-        end_date = datetime(2026, 1, 31)
+        """Generate daily sales for last 6 months up to today, appending if needed"""
+        
+        # Check existing data to determine start point
+        try:
+            self.cursor.execute("SELECT MAX(id), MAX(date) FROM sale WHERE user_id = ?", (self.user_id,))
+            max_id, max_date_str = self.cursor.fetchone()
+        except Exception:
+            max_id, max_date_str = None, None
+
+        sale_id = (max_id or 999) + 1
+        
+        end_date = datetime.now()
+        
+        if max_date_str:
+            # We have data, resume from day after last record
+            # Handle potential microseconds
+            if '.' in max_date_str:
+                max_date_str = max_date_str.split('.')[0]
+            last_date = datetime.strptime(max_date_str, "%Y-%m-%d %H:%M:%S")
+            # If last date is today (ignoring time), we might already have data, but let's check
+            # Logic: If last transaction was yesterday, generating for today.
+            # If last transaction was today, we assume "today" is partially done or done? 
+            # The prompt says analytics is empty for 19th and 20th.
+            # So max_date is likely 18th.
+            start_date = last_date + timedelta(days=1)
+            
+            # Reset time to midnight for iteration logic
+            start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            print(f"Appending data starting from {start_date.strftime('%Y-%m-%d')} (Next ID: {sale_id})")
+        else:
+            # No data, generate full history
+            start_date = end_date - timedelta(days=180) # Approx 6 months
+            print(f"Generating full history from {start_date.strftime('%Y-%m-%d')}")
+
         
         # Seasonal factors by month
         seasonal_factors = {
@@ -86,7 +133,8 @@ class DailySalesGenerator:
             10: 1.15, # October - Navratri
             11: 1.4,  # November - Diwali (PEAK)
             12: 1.35, # December - Christmas
-            1: 1.2    # January - New Year
+            1: 1.2,   # January - New Year
+            2: 1.1    # February
         }
         
         # Weekend factors
@@ -111,15 +159,16 @@ class DailySalesGenerator:
             "2026-01-01": 1.5,  # New Year Day
             "2026-01-15": 1.3,  # Pongal/Makar Sankranti
             "2026-01-26": 1.2,  # Republic Day
+            "2026-02-14": 1.4,  # Valentine's Day
         }
         
         daily_sales_data = []
-        sale_id = 1000
         
         current_date = start_date
-        print("\n📊 Generating daily sales...")
+        print("\nGenerating daily sales...")
         
-        while current_date <= end_date:
+        # Loop until today (inclusive)
+        while current_date.date() <= end_date.date():
             month = current_date.month
             weekday = current_date.weekday()
             date_str = current_date.strftime("%Y-%m-%d")
@@ -130,7 +179,7 @@ class DailySalesGenerator:
             # Apply special date multiplier if applicable
             if date_str in special_dates:
                 day_multiplier *= special_dates[date_str]
-                print(f"   🎉 Special day {date_str}: {day_multiplier:.1f}x multiplier")
+                print(f"   Special day {date_str}: {day_multiplier:.1f}x multiplier")
             
             # Number of transactions (20-50 per day based on multiplier)
             base_transactions = random.randint(25, 40)
@@ -210,13 +259,17 @@ class DailySalesGenerator:
                 daily_items += quantity
                 sale_id += 1
             
-            # Print daily summary every 30 days
-            if current_date.day == 1 or current_date.day == 15:
-                print(f"   {date_str}: {num_transactions} transactions, ₹{daily_revenue:.0f} revenue, {daily_items} items")
+            # Print daily summary every 30 days or if it's recent
+            if current_date.day == 1 or current_date.day == 15 or current_date >= end_date - timedelta(days=5):
+                print(f"   {date_str}: {num_transactions} transactions, Rs. {daily_revenue:.0f} revenue, {daily_items} items")
             
             current_date += timedelta(days=1)
         
-        # Insert in batches
+        if not daily_sales_data:
+            print("No new data to generate.")
+            return []
+
+        # Insert in batches for Sales
         batch_size = 500
         for i in range(0, len(daily_sales_data), batch_size):
             batch = daily_sales_data[i:i+batch_size]
@@ -225,56 +278,157 @@ class DailySalesGenerator:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', batch)
             self.conn.commit()
-            print(f"   Inserted batch {i//batch_size + 1}/{(len(daily_sales_data)//batch_size)+1}")
+            print(f"   Inserted Sale batch {i//batch_size + 1}/{(len(daily_sales_data)//batch_size)+1}")
         
-        print(f"\n✅ Generated {len(daily_sales_data)} daily sales records")
+        # --- Generate Transactions (1 Sale = 1 Transaction for simplicity) ---
+        print("\n   Generatng corresponding Transaction records...")
+        
+        # Check max transaction ID
+        try:
+            self.cursor.execute("SELECT MAX(id) FROM 'transaction' WHERE user_id = ?", (self.user_id,))
+            max_txn_id = self.cursor.fetchone()[0]
+        except Exception:
+            max_txn_id = None
+        
+        txn_id = (max_txn_id or 0) + 1
+        transactions_data = []
+
+        # Customer names for variety
+        customer_names = ["Walk-in Customer", "Sanjay Kumar", "Anvi Desai", "Sunil Sneha", "Arjun Nair", "Aadhya Malhotra", "Rohan Gupta", "Priya Sharma"]
+        payment_methods = ["Cash", "UPI", "Card"]
+        
+        for sale in daily_sales_data:
+            # Sale tuple: (id, product_id, quantity, price, cost, total, date_str, user_id)
+            s_id, p_id, qty, price, _, total, date_str, u_id = sale
+            
+            # Find product name
+            p_name = next((p[1] for p in self.products if p[0] == p_id), "Unknown Product")
+            
+            # Simulate transaction details
+            cust_name = random.choice(customer_names)
+            pay_method = random.choice(payment_methods)
+            
+            # Create Invoice Ref
+            dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+            ref = f"{dt.strftime('%y%m%d')}{txn_id}" # Simple ref
+            
+            # Create JSON data blob
+            data_blob = json.dumps({
+                "items": [{
+                    "id": p_id,
+                    "name": p_name,
+                    "quantity": qty,
+                    "price": price,
+                    "total": total
+                }],
+                "subtotal": total,
+                "tax": 0,
+                "discount": 0,
+                "total": total,
+                "date": dt.strftime('%Y-%m-%d'),
+                "time": dt.strftime('%I:%M %p')
+            })
+            
+            transactions_data.append((
+                txn_id,
+                'invoice',
+                ref,
+                cust_name,
+                '9876543210' if cust_name != "Walk-in Customer" else None,
+                total,
+                pay_method,
+                data_blob,
+                date_str,
+                self.user_id
+            ))
+            txn_id += 1
+            
+        # Insert Transactions in batches
+        for i in range(0, len(transactions_data), batch_size):
+            batch = transactions_data[i:i+batch_size]
+            self.cursor.executemany('''
+                INSERT INTO 'transaction' (id, txn_type, txn_ref, customer_name, customer_phone, amount, payment_method, data, date, user_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', batch)
+            self.conn.commit()
+            print(f"   Inserted Transaction batch {i//batch_size + 1}/{(len(transactions_data)//batch_size)+1}")
+
+        print(f"\nGenerated {len(daily_sales_data)} daily sales records")
         return daily_sales_data
     
     def generate_stock_in(self):
-        """Generate stock in records"""
-        stock_data = []
-        stock_id = 1
+        """Generate stock in records, appending new if needed"""
         
-        # Initial stock
-        for product in self.products:
-            product_id = product[0]
-            quantity = product[6] * 60  # 2 months stock
-            cost = product[5]
+        # Check existing data
+        try:
+            self.cursor.execute("SELECT MAX(id), MAX(date) FROM stock_in WHERE user_id = ?", (self.user_id,))
+            max_id, max_date_str = self.cursor.fetchone()
+        except Exception:
+            max_id, max_date_str = None, None
             
-            stock_data.append((
-                stock_id, product_id, quantity, cost,
-                "2025-08-01 09:00:00", self.user_id
-            ))
-            stock_id += 1
+        stock_id = (max_id or 0) + 1
+        stock_data = []
+        
+        # Dates
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=180) 
+
+        # Initial stock (only if no data exists)
+        if not max_id:
+            print("Generating initial stock...")
+            for product in self.products:
+                product_id = product[0]
+                quantity = product[6] * 60  # 2 months stock
+                cost = product[5]
+                
+                stock_data.append((
+                    stock_id, product_id, quantity, cost,
+                    (start_date - timedelta(days=5)).strftime("%Y-%m-%d %H:%M:%S"), self.user_id
+                ))
+                stock_id += 1
         
         # Monthly restocking
-        restock_dates = [
-            "2025-09-01 10:00:00",
-            "2025-10-01 10:00:00",
-            "2025-11-01 10:00:00",
-            "2025-12-01 10:00:00",
-            "2026-01-01 10:00:00",
-            "2026-01-15 10:00:00",  # Mid-month restock
-        ]
-        
-        for date in restock_dates:
-            for product in self.products:
-                if random.random() < 0.7:  # 70% products restocked
-                    product_id = product[0]
-                    quantity = product[6] * 45  # 1.5 months stock
-                    cost = product[5]
-                    
-                    stock_data.append((
-                        stock_id, product_id, quantity, cost, date, self.user_id
-                    ))
-                    stock_id += 1
-        
-        self.cursor.executemany('''
-            INSERT INTO stock_in (id, product_id, quantity, cost_price, date, user_id)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', stock_data)
-        self.conn.commit()
-        print(f"✅ Generated {len(stock_data)} stock in records")
+        # Calculate expected restock dates
+        restock_dates = []
+        curr = start_date + timedelta(days=30)
+        while curr <= end_date:
+            restock_dates.append(curr.strftime("%Y-%m-%d %H:%M:%S"))
+            curr += timedelta(days=30)
+            
+        # Filter restock dates that are newer than what we have
+        new_restock_dates = []
+        if max_date_str:
+            last_stock_date = datetime.strptime(max_date_str, "%Y-%m-%d %H:%M:%S")
+            for date_str in restock_dates:
+                d = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+                if d > last_stock_date:
+                    new_restock_dates.append(date_str)
+        else:
+            new_restock_dates = restock_dates
+            
+        if new_restock_dates:
+            print(f"Generating {len(new_restock_dates)} new restock batches...")
+            for date in new_restock_dates:
+                for product in self.products:
+                    if random.random() < 0.7:  # 70% products restocked
+                        product_id = product[0]
+                        quantity = product[6] * 45  # 1.5 months stock
+                        cost = product[5]
+                        
+                        stock_data.append((
+                            stock_id, product_id, quantity, cost, date, self.user_id
+                        ))
+                        stock_id += 1
+        else:
+            print("No new stock data needed.")
+
+        if stock_data:
+            self.cursor.executemany('''
+                INSERT INTO stock_in (id, product_id, quantity, cost_price, date, user_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', stock_data)
+            self.conn.commit()
+            print(f"Generated {len(stock_data)} stock in records")
         
         return stock_data
     
@@ -301,7 +455,7 @@ class DailySalesGenerator:
             ''', (current, product_id))
         
         self.conn.commit()
-        print("✅ Stock levels updated")
+        print("Stock levels updated")
     
     def generate_daily_summary(self):
         """Generate a CSV with daily sales summary"""
@@ -342,14 +496,14 @@ class DailySalesGenerator:
         
         # Save to CSV
         df.to_csv('daily_sales_summary.csv', index=False)
-        print("✅ Daily summary saved to 'daily_sales_summary.csv'")
+        print("Generated daily summary saved to 'daily_sales_summary.csv'")
         
         return df
     
     def generate_analysis(self):
         """Generate analysis report"""
         print("\n" + "="*60)
-        print("📊 DAILY SALES ANALYSIS (Last 6 Months)")
+        print("DAILY SALES ANALYSIS (Last 6 Months)")
         print("="*60)
         
         # Overall statistics
@@ -359,19 +513,19 @@ class DailySalesGenerator:
         ''', (self.user_id,))
         total_trans, total_rev, total_items, avg_trans = self.cursor.fetchone()
         
-        print(f"\n📈 OVERALL STATISTICS:")
+        print(f"\nOVERALL STATISTICS:")
         print(f"   Total Transactions: {total_trans}")
-        print(f"   Total Revenue: ₹{total_rev:,.2f}")
+        print(f"   Total Revenue: Rs. {total_rev:,.2f}")
         print(f"   Total Items Sold: {total_items:,.0f}")
-        print(f"   Average Transaction: ₹{avg_trans:,.2f}")
+        print(f"   Average Transaction: Rs. {avg_trans:,.2f}")
         
         # Monthly breakdown
-        print(f"\n📅 MONTHLY BREAKDOWN:")
+        print(f"\nMONTHLY BREAKDOWN:")
         self.cursor.execute('''
             SELECT strftime('%Y-%m', date) as month,
-                   COUNT(*) as transactions,
-                   SUM(total_amount) as revenue,
-                   SUM(quantity) as items
+                    COUNT(*) as transactions,
+                    SUM(total_amount) as revenue,
+                    SUM(quantity) as items
             FROM sale
             WHERE user_id = ?
             GROUP BY month
@@ -383,7 +537,7 @@ class DailySalesGenerator:
             print(f"   {month[0]}: {month[2]:>10.0f} revenue, {month[3]:>5.0f} items, {month[1]:>4} transactions")
         
         # Top products
-        print(f"\n🏆 TOP 10 PRODUCTS:")
+        print(f"\nTOP 10 PRODUCTS:")
         self.cursor.execute('''
             SELECT p.name, COUNT(*) as times_sold, SUM(s.quantity) as total_qty, SUM(s.total_amount) as revenue
             FROM sale s
@@ -399,7 +553,7 @@ class DailySalesGenerator:
             print(f"   {i}. {prod[0]}: {prod[3]:>8.0f} revenue, {prod[2]:>4} units")
         
         # Weekend vs Weekday
-        print(f"\n📆 WEEKEND VS WEEKDAY:")
+        print(f"\nWEEKEND VS WEEKDAY:")
         self.cursor.execute('''
             SELECT 
                 CASE WHEN cast(strftime('%w', date) as integer) IN (0,6) THEN 'Weekend' ELSE 'Weekday' END as day_type,
@@ -413,14 +567,14 @@ class DailySalesGenerator:
         
         day_types = self.cursor.fetchall()
         for dt in day_types:
-            print(f"   {dt[0]}: {dt[3]:>8.0f} total, {dt[1]:>4} transactions, ₹{dt[2]:.0f} avg")
+            print(f"   {dt[0]}: {dt[3]:>8.0f} total, {dt[1]:>4} transactions, Rs. {dt[2]:.0f} avg")
         
         print("="*60)
     
     def generate_predictions(self):
         """Generate next month predictions"""
         print("\n" + "="*60)
-        print("🔮 NEXT MONTH PREDICTIONS")
+        print("NEXT MONTH PREDICTIONS")
         print("="*60)
         
         # Get last 3 months sales
@@ -502,24 +656,24 @@ class DailySalesGenerator:
         # Sort by predicted revenue
         predictions.sort(key=lambda x: x['predicted_revenue'], reverse=True)
         
-        print(f"\n📊 TOP 10 PRODUCTS BY PREDICTED REVENUE:")
+        print(f"\nTOP 10 PRODUCTS BY PREDICTED REVENUE:")
         for i, p in enumerate(predictions[:10], 1):
             print(f"   {i}. {p['product']}:")
-            print(f"      📈 Predicted: {p['predicted_units']} units (₹{p['predicted_revenue']:,.0f})")
-            print(f"      📦 Current Stock: {p['current_stock']} units")
+            print(f"      Predicted: {p['predicted_units']} units (Rs. {p['predicted_revenue']:,.0f})")
+            print(f"      Current Stock: {p['current_stock']} units")
             if p['need_to_order'] > 0:
-                print(f"      ⚠️ Need to order: {p['need_to_order']} units")
+                print(f"      Need to order: {p['need_to_order']} units")
         
-        print(f"\n💰 TOTAL PREDICTED REVENUE NEXT MONTH: ₹{total_predicted_revenue:,.0f}")
+        print(f"\nTOTAL PREDICTED REVENUE NEXT MONTH: Rs. {total_predicted_revenue:,.0f}")
         print("="*60)
         
         return predictions
     
-    def run(self):
+    def run(self, app_instance=None, db_instance=None):
         """Run the complete generator"""
-        print("🚀 Starting Daily Sales Generator...")
+        print("Starting Daily Sales Generator...")
         
-        self.setup_database()
+        self.setup_database(app_instance, db_instance)
         self.generate_stock_in()
         self.generate_daily_sales()
         self.update_stock_levels()
@@ -531,21 +685,21 @@ class DailySalesGenerator:
         
         self.conn.close()
         
-        print("\n✅ Daily sales data generation complete!")
-        print("\n📁 Files created:")
+        print("\nDaily sales data generation complete!")
+        print("\nFiles created:")
         print("   - instance/shop.db (SQLite database)")
         print("   - daily_sales_summary.csv (Daily sales summary)")
         
-        print("\n🔐 Login credentials:")
+        print("\nLogin credentials:")
         print("   Username: demo_shop")
         print("   Password: password123")
         
         return df, predictions
-
+ 
 if __name__ == "__main__":
     generator = DailySalesGenerator()
     df, predictions = generator.run()
     
     # Show first few rows of daily summary
-    print("\n📋 First 10 days of sales data:")
+    print("\nFirst 10 days of sales data:")
     print(df.head(10).to_string())
